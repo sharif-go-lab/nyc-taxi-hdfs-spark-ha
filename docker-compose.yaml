@@ -1,0 +1,198 @@
+name: nyc-taxi-ha
+
+services:
+  zookeeper:
+    image: zookeeper:3.8
+    platform: linux/amd64
+    hostname: zookeeper
+    restart: unless-stopped
+    networks: [hdfs-net]
+    # no host port mapping to avoid 2181 conflicts
+    # ports: ["12181:2181"]
+
+  journalnode1:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: journalnode1
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_JOURNALNODE_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - jn1:/opt/hadoop/dfs/journal
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/journal && chown -R 0:0 /opt/hadoop/dfs/journal /opt/hadoop/logs && exec hdfs journalnode"]
+    networks: [hdfs-net]
+
+  journalnode2:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: journalnode2
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_JOURNALNODE_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - jn2:/opt/hadoop/dfs/journal
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/journal && chown -R 0:0 /opt/hadoop/dfs/journal /opt/hadoop/logs && exec hdfs journalnode"]
+    networks: [hdfs-net]
+
+  journalnode3:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: journalnode3
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_JOURNALNODE_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - jn3:/opt/hadoop/dfs/journal
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/journal && chown -R 0:0 /opt/hadoop/dfs/journal /opt/hadoop/logs && exec hdfs journalnode"]
+    networks: [hdfs-net]
+
+  namenode1:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: namenode1
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_NAMENODE_USER=root
+      - HDFS_ZKFC_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - nn1:/opt/hadoop/dfs/name
+      - ./data:/data/host:ro
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/name && chown -R 0:0 /opt/hadoop/dfs/name /opt/hadoop/logs && tail -f /dev/null"]
+    ports:
+      - "9870:9870"
+    networks: [hdfs-net]
+    depends_on:
+      - zookeeper
+      - journalnode1
+      - journalnode2
+      - journalnode3
+
+  namenode2:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: namenode2
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_NAMENODE_USER=root
+      - HDFS_ZKFC_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - nn2:/opt/hadoop/dfs/name
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/name && chown -R 0:0 /opt/hadoop/dfs/name /opt/hadoop/logs && tail -f /dev/null"]
+    ports:
+      - "9871:9870"
+    networks: [hdfs-net]
+    depends_on:
+      - zookeeper
+      - journalnode1
+      - journalnode2
+      - journalnode3
+
+  datanode1:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: datanode1
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_DATANODE_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - dn1:/opt/hadoop/dfs/data
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/data && chown -R 0:0 /opt/hadoop/dfs/data /opt/hadoop/logs && tail -f /dev/null"]
+    networks: [hdfs-net]
+
+  datanode2:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: datanode2
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_DATANODE_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - dn2:/opt/hadoop/dfs/data
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/data && chown -R 0:0 /opt/hadoop/dfs/data /opt/hadoop/logs && tail -f /dev/null"]
+    networks: [hdfs-net]
+
+  datanode3:
+    image: apache/hadoop:3
+    platform: linux/amd64
+    hostname: datanode3
+    user: "0"
+    restart: unless-stopped
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HADOOP_LOG_DIR=/opt/hadoop/logs
+      - HDFS_DATANODE_USER=root
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - dn3:/opt/hadoop/dfs/data
+    command: ["bash","-lc","mkdir -p /opt/hadoop/logs /opt/hadoop/dfs/data && chown -R 0:0 /opt/hadoop/dfs/data /opt/hadoop/logs && tail -f /dev/null"]
+    networks: [hdfs-net]
+
+  builder:
+    image: maven:3.9-eclipse-temurin-17
+    platform: linux/amd64
+    hostname: builder
+    working_dir: /workspace
+    volumes:
+      - ./spark-app:/workspace
+    command: ["bash","-lc","tail -f /dev/null"]
+    networks: [hdfs-net]
+
+  spark:
+    image: bitnami/spark:3.5
+    platform: linux/amd64
+    hostname: spark
+    user: "0"
+    environment:
+      - SPARK_MODE=client
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+    volumes:
+      - ./hadoop:/opt/hadoop/etc/hadoop
+      - ./spark-app:/opt/spark-app
+    command: ["bash","-lc","tail -f /dev/null"]
+    networks: [hdfs-net]
+    depends_on:
+      - namenode1
+      - datanode1
+
+volumes:
+  jn1: {}
+  jn2: {}
+  jn3: {}
+  nn1: {}
+  nn2: {}
+  dn1: {}
+  dn2: {}
+  dn3: {}
+
+networks:
+  hdfs-net:
+    driver: bridge
+
